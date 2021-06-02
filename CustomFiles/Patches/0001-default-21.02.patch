@@ -1,0 +1,684 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: teasiu <teasiu@qq.com>
+Date: Sat, 15 May 2021 19:40:31 +0800
+Subject: [PATCH] default 21.02
+
+Signed-off-by: teasiu <teasiu@qq.com>
+---
+ include/version.mk                            |   2 +-
+ package/base-files/files/bin/AutoUpdate.sh    | 390 ++++++++++++++++++
+ package/base-files/files/bin/config_generate  |  11 +-
+ package/base-files/files/etc/passwd           |   2 +-
+ package/base-files/files/etc/profile          |  79 +++-
+ package/base-files/files/etc/shadow           |   2 +-
+ package/base-files/image-config.in            |   2 +-
+ .../linux/files/sysctl-nf-conntrack.conf      |   2 +-
+ .../config/firewall/files/firewall.config     |  65 +++
+ 9 files changed, 527 insertions(+), 28 deletions(-)
+ create mode 100755 package/base-files/files/bin/AutoUpdate.sh
+
+diff --git a/include/version.mk b/include/version.mk
+index a4b47c8..02776bc 100644
+--- a/include/version.mk
++++ b/include/version.mk
+@@ -29,7 +29,7 @@ VERSION_CODE:=$(call qstrip,$(CONFIG_VERSION_CODE))
+ VERSION_CODE:=$(if $(VERSION_CODE),$(VERSION_CODE),$(REVISION))
+ 
+ VERSION_REPO:=$(call qstrip,$(CONFIG_VERSION_REPO))
+-VERSION_REPO:=$(if $(VERSION_REPO),$(VERSION_REPO),https://downloads.openwrt.org/releases/21.02-SNAPSHOT)
++VERSION_REPO:=$(if $(VERSION_REPO),$(VERSION_REPO),https://mirrors.cloud.tencent.com/openwrt/releases/21.02-SNAPSHOT)
+ 
+ VERSION_DIST:=$(call qstrip,$(CONFIG_VERSION_DIST))
+ VERSION_DIST:=$(if $(VERSION_DIST),$(VERSION_DIST),OpenWrt)
+diff --git a/package/base-files/files/bin/AutoUpdate.sh b/package/base-files/files/bin/AutoUpdate.sh
+new file mode 100755
+index 0000000..bf70006
+--- /dev/null
++++ b/package/base-files/files/bin/AutoUpdate.sh
+@@ -0,0 +1,390 @@
++#!/bin/bash
++# https://github.com/Hyy2001X/AutoBuild-Actions
++# AutoBuild Module by Hyy2001
++# AutoUpdate for Openwrt
++
++Version=V5.7.4
++
++Shell_Helper() {
++cat <<EOF
++
++使用方法:	$0 [<更新参数/复合参数] [-n] [-f] [-u] [-p] [-np] [-fp]
++		$0 [<设置参数>...] [-c] [-b] <额外参数>
++		$0 [<其他>...] [-x] [-xp] [-l] [-lp] [-d] [-h]
++
++更新参数:
++	-n		更新固件 [不保留配置]
++	-np		更新固件 [不保留配置] (镜像加速)
++	-f		强制更新固件,即跳过版本号验证,自动下载以及安装必要软件包 [保留配置]
++	-u		适用于定时更新 LUCI 的参数 [保留配置]
++
++设置参数:
++	-c		[额外参数:<Github 地址>] 更换 Github 地址
++	-b		[额外参数:<引导方式 UEFI/Legacy>] 指定 x86 设备下载使用 UEFI/Legacy 引导的固件 (危险)
++
++其他:
++	-x		更新 AutoUpdate.sh 脚本
++	-xp		更新 AutoUpdate.sh 脚本 (镜像加速)
++	-l		列出系统信息
++	-d		清理固件下载缓存
++	-h		打印帮助信息
++	
++复合/单参数:
++	-p		使用 [FastGit] 镜像加速
++
++EOF
++exit 0
++}
++
++List_Info() {
++cat <<EOF
++
++AutoUpdate 版本:	${Version}
++/overlay 可用:		${Overlay_Available}
++/tmp 可用:		${TMP_Available}M
++固件下载位置:		${Download_Path}
++当前设备:		${CURRENT_Device}
++默认设备:		${DEFAULT_Device}
++当前固件版本:		${CURRENT_Version}
++固件名称:		AutoBuild-${CURRENT_Device}-${CURRENT_Version}${Firmware_SFX}
++Github:			${Github}
++Github Raw:		${Github_Raw}
++解析 API:		${Github_Tags}
++固件下载地址:		${Github_Release}
++作者/仓库:		${Author}
++固件格式:		${Firmware_SFX}
++EOF
++	[[ "${DEFAULT_Device}" == x86_64 ]] && {
++		echo "EFI 引导:		${EFI_Mode}"
++		echo "固件压缩:		${Compressed_Firmware}"
++	}
++	exit 0
++}
++
++Install_Pkg() {
++	export PKG_NAME=$1
++	if [[ ! "$(cat ${Download_Path}/Installed_PKG_List)" =~ "${PKG_NAME}" ]];then
++		[[ "${Force_Update}" == 1 ]] || [[ "${AutoUpdate_Mode}" == 1 ]] && {
++			export Choose=Y
++		} || {
++			TIME && read -p "未安装[${PKG_NAME}],是否执行安装?[Y/n]:" Choose
++		}
++		if [[ "${Choose}" == Y ]] || [[ "${Choose}" == y ]];then
++			TIME "开始安装[${PKG_NAME}],请耐心等待...\n"
++			opkg update > /dev/null 2>&1
++			opkg install ${PKG_NAME}
++			[[ ! $? -ne 0 ]] && {
++				TIME "[${PKG_NAME}] 安装成功!"
++			} || {
++				TIME "[${PKG_NAME}] 安装失败,请尝试手动安装!"
++				exit 1
++			}
++		else
++			TIME "用户已取消安装,即将退出更新脚本..."
++			sleep 2
++			exit 0
++		fi
++	fi
++}
++
++TIME() {
++	[[ -z "$1" ]] && {
++		echo -ne "\n[$(date "+%H:%M:%S")] "
++	} || {
++	    case $1 in
++		r) export Color="\e[31m";;
++		g) export Color="\e[32m";;
++		b) export Color="\e[34m";;
++		y) export Color="\e[33m";;
++	    esac
++		[[ $# -lt 2 ]] && echo -e "\n\e[36m[$(date "+%H:%M:%S")]\e[0m ${1}" || {
++			echo -e "\n\e[36m[$(date "+%H:%M:%S")]\e[0m ${Color}${2}\e[0m"
++	    }
++	}
++}
++
++[ -f /etc/openwrt_info ] && source /etc/openwrt_info || {
++	TIME r "未检测到 /etc/openwrt/info,无法运行更新程序!"
++	exit 1
++}
++
++export Input_Option=$1
++export Input_Other=$2
++export Download_Path="/tmp/Downloads"
++export Github_Release="${Github}/releases/download/AutoUpdate"
++export Author="${Github##*com/}"
++export CLOUD_Script="Hyy2001X/AutoBuild-Actions/master/Scripts/AutoUpdate.sh"
++export Github_Tags="https://api.github.com/repos/${Author}/releases/latest"
++export Github_Raw="https://raw.githubusercontent.com"
++export _PROXY_Release="https://download.fastgit.org"
++export TMP_Available="$(df -m | grep "/tmp" | awk '{print $4}' | awk 'NR==1' | awk -F. '{print $1}')"
++export Overlay_Available="$(df -h | grep ":/overlay" | awk '{print $4}' | awk 'NR==1')"
++export Retry_Times=4
++[ ! -d "${Download_Path}" ] && mkdir -p ${Download_Path}
++opkg list | awk '{print $1}' > ${Download_Path}/Installed_PKG_List
++case ${DEFAULT_Device} in
++x86_64)
++	[[ -z "${Firmware_Type}" ]] && Firmware_Type=img
++	[[ "${Firmware_Type}" == img.gz ]] && {
++		export Compressed_Firmware=1
++	} || export Compressed_Firmware=0
++	[ -f /etc/openwrt_boot ] && {
++		export BOOT_Type="-$(cat /etc/openwrt_boot)"
++	} || {
++		[ -d /sys/firmware/efi ] && {
++			export BOOT_Type="-UEFI"
++		} || export BOOT_Type="-Legacy"
++	}
++	case ${BOOT_Type} in
++	-Legacy)
++		export EFI_Mode=0
++	;;
++	-UEFI)
++		export EFI_Mode=1
++	;;
++	esac
++	export Firmware_SFX="${BOOT_Type}.${Firmware_Type}"
++	export Detail_SFX="${BOOT_Type}.detail"
++	export CURRENT_Device=x86_64
++	export Space_Min=480
++;;
++*)
++	export CURRENT_Device="$(jsonfilter -e '@.model.id' < /etc/board.json | tr ',' '_')"
++	export Firmware_SFX=".${Firmware_Type}"
++	[[ -z ${Firmware_SFX} ]] && export Firmware_SFX=".bin"
++	export Detail_SFX=.detail
++	export Space_Min=0
++esac
++cd /etc
++clear && echo "Openwrt-AutoUpdate Script ${Version}"
++if [[ -z "${Input_Option}" ]];then
++	export Upgrade_Options="-q"
++	TIME g "执行: 保留配置更新固件"
++else
++	[[ "${Input_Option}" =~ p ]] && {
++		export PROXY_Release="${_PROXY_Release}"
++		export Github_Raw="https://raw.fastgit.org"
++		export PROXY_ECHO="[FastGit] "
++	} || {
++		export PROXY_ECHO=""
++	}
++	case ${Input_Option} in
++	-n | -f | -u | -p | -np | -pn | -fp | -pf | -up | -pu)
++		case ${Input_Option} in
++		-n | -np | -pn)
++			TIME g "${PROXY_ECHO}执行: 更新固件(不保留配置)"
++			export Upgrade_Options="-n"
++		;;
++		-f | -pf | -fp)
++			export Force_Update=1
++			export Upgrade_Options="-q"
++			TIME g "${PROXY_ECHO}执行: 强制更新固件(保留配置)"
++		;;
++		-u | -pu | -up)
++			export AutoUpdate_Mode=1
++			export Upgrade_Options="-q"
++		;;
++		-p | -pq | -qp)
++			export Upgrade_Options="-q"
++			TIME g "${PROXY_ECHO}执行: 保留配置更新固件"
++		;;
++		esac
++	;;
++	-c)
++		if [[ -n "${Input_Other}" ]];then
++			sed -i "s?${Github}?${Input_Other}?g" /etc/openwrt_info
++			TIME y "Github 地址已更换为: ${Input_Other}"
++			unset Input_Other
++			exit 0
++		else
++			Shell_Helper
++		fi
++	;;
++	-l | -lp | -pl)
++		List_Info
++	;;
++	-d)
++		rm -f ${Download_Path}/*
++		TIME y "固件下载缓存清理完成!"
++		exit 0
++	;;
++	-h)
++		Shell_Helper
++	;;
++	-b)
++		[[ -z "${Input_Other}" ]] && Shell_Helper
++		case "${Input_Other}" in
++		UEFI | Legacy)
++			echo "${Input_Other}" > /etc/openwrt_boot
++			sed -i '/openwrt_boot/d' /etc/sysupgrade.conf
++			echo -e "\n/etc/openwrt_boot" >> /etc/sysupgrade.conf
++			TIME y "固件引导方式已指定为: ${Input_Other}!"
++			exit 0
++		;;
++		*)
++			TIME r "错误的参数: [${Input_Other}],当前支持的选项: [UEFI/Legacy] !"
++			exit 1
++		;;
++		esac
++	;;
++	-x | -xp | -px)
++		export CLOUD_Script=${Github_Raw}/Hyy2001X/AutoBuild-Actions/master/Scripts/AutoUpdate.sh
++		TIME "${PROXY_ECHO}开始更新 AutoUpdate 脚本,请耐心等待..."
++		wget -q --tries 3 --timeout 5 ${CLOUD_Script} -O ${Download_Path}/AutoUpdate.sh
++		if [[ $? == 0 ]];then
++			rm /bin/AutoUpdate.sh
++			mv -f ${Download_Path}/AutoUpdate.sh /bin
++			chmod +x /bin/AutoUpdate.sh
++			NEW_Version=$(egrep -o "V[0-9]+.[0-9].+" /bin/AutoUpdate.sh | awk 'NR==1')
++			TIME y "AutoUpdate [${Version}] > [${NEW_Version}]"
++			TIME y "AutoUpdate 脚本更新成功!"
++			exit 0
++		else
++			TIME r "AutoUpdate 脚本更新失败,请检查网络后重试!"
++			exit 1
++		fi	
++	;;
++	*)
++		echo -e "\nERROR INPUT: [$*]"
++		Shell_Helper
++	;;
++	esac
++fi
++if [[ -z "${PROXY_Release}" ]];then
++	if [[ "$(cat ${Download_Path}/Installed_PKG_List)" =~ curl ]];then
++		export Google_Check=$(curl -I -s --connect-timeout 3 google.com -w %{http_code} | tail -n1)
++		[[ ! "$Google_Check" == 301 ]] && {
++			TIME r "Google 连接失败,尝试使用 [FastGit] 镜像加速!"
++			export PROXY_Release="${_PROXY_Release}"
++		}
++	else
++		TIME r "无法确定网络环境,默认开启 [FastGit] 镜像加速!"
++		export PROXY_Release="${_PROXY_Release}"
++	fi
++fi
++[[ "${TMP_Available}" -lt "${Space_Min}" ]] && {
++	TIME r "/tmp 空间不足: [${Space_Min}M],无法执行更新!"
++	exit 1
++}
++Install_Pkg wget
++if [[ -z "${CURRENT_Version}" ]];then
++	TIME r "警告: 当前固件版本获取失败!"
++	export CURRENT_Version=Unknown
++fi
++if [[ -z "${CURRENT_Device}" ]];then
++	[[ -n "$DEFAULT_Device" ]] && {
++		TIME r "警告: 当前设备名称获取失败,使用预设名称: [$DEFAULT_Device]"
++		export CURRENT_Device="${DEFAULT_Device}"
++	} || {
++		TIME r "未检测到设备名称,无法执行更新!"
++		exit 1
++	}
++fi
++TIME "正在检查版本更新..."
++wget -q --timeout 5 ${Github_Tags} -O - > ${Download_Path}/Github_Tags
++[[ ! $? == 0 ]] && {
++	TIME r "检查更新失败,请稍后重试!"
++	exit 1
++}
++TIME "正在获取云端固件信息..."
++export CLOUD_Firmware=$(egrep -o "AutoBuild-${CURRENT_Device}-R[0-9].+-[0-9]+${Firmware_SFX}" ${Download_Path}/Github_Tags | awk 'END {print}')
++export CLOUD_Version=$(echo ${CLOUD_Firmware} | egrep -o "R[0-9].+-[0-9]+")
++[[ -z "${CLOUD_Version}" ]] && {
++	TIME r "云端固件信息获取失败!"
++	exit 1
++}
++export Firmware_Name="$(echo ${CLOUD_Firmware} | egrep -o "AutoBuild-${CURRENT_Device}-R[0-9].+-[0-9]+")"
++export Firmware="${CLOUD_Firmware}"
++export Firmware_Detail="${Firmware_Name}${Detail_SFX}"
++let X="$(grep -n "${Firmware}" ${Download_Path}/Github_Tags | tail -1 | cut -d : -f 1)-4"
++let CLOUD_Firmware_Size="$(sed -n "${X}p" ${Download_Path}/Github_Tags | egrep -o "[0-9]+" | awk '{print ($1)/1048576}' | awk -F. '{print $1}')+1"
++echo -e "\n固件作者: ${Author%/*}"
++echo "设备名称: ${CURRENT_Device}"
++echo "固件格式: ${Firmware_SFX}"
++echo -e "\n当前固件版本: ${CURRENT_Version}"
++echo "云端固件版本: ${CLOUD_Version}"
++echo "可用空间: ${TMP_Available}M"
++echo "固件大小: ${CLOUD_Firmware_Size}M"
++if [[ ! "${Force_Update}" == 1 ]];then
++	[[ "${TMP_Available}" -lt "${CLOUD_Firmware_Size}" ]] && {
++		TIME r "/tmp 空间不足: [${CLOUD_Firmware_Size}M],无法执行更新!"
++		exit
++	}
++	if [[ "${CURRENT_Version}" == "${CLOUD_Version}" ]];then
++		[[ "${AutoUpdate_Mode}" == 1 ]] && exit 0
++		TIME && read -p "已是最新版本,是否强制更新固件?[Y/n]:" Choose
++		[[ "${Choose}" == Y ]] || [[ "${Choose}" == y ]] && {
++			TIME "开始强制更新固件..."
++		} || {
++			TIME "已取消强制更新,即将退出更新程序..."
++			sleep 2
++			exit 0
++		}
++	fi
++fi
++[[ -n "${PROXY_Release}" ]] && export Github_Release="${PROXY_Release}/${Author}/releases/download/AutoUpdate"
++echo -e "\n云端固件名称: ${Firmware}"
++echo "固件下载地址: ${Github_Release}"
++echo "固件保存位置: ${Download_Path}"
++rm -f ${Download_Path}/AutoBuild-*
++TIME "正在下载固件,请耐心等待..."
++cd ${Download_Path}
++while [ "${Retry_Times}" -ge 0 ];
++do
++	if [[ "${Retry_Times}" == 3 ]];then
++		[[ -z "${PROXY_Release}" ]] && {
++			TIME "正在尝试使用 [FastGit] 镜像加速下载..."
++			export Github_Release="${_PROXY_Release}/${Author}/releases/download/AutoUpdate"
++		}
++	fi
++	if [[ "${Retry_Times}" == 0 ]];then
++		TIME r "固件下载失败,请检查网络后重试!"
++		exit 1
++	else
++		wget -q --tries 1 --timeout 5 "${Github_Release}/${Firmware}" -O ${Firmware}
++		[[ $? == 0 ]] && break
++	fi
++	export Retry_Times=$((${Retry_Times} - 1))
++	TIME r "下载失败,剩余尝试次数: [${Retry_Times}]"
++	sleep 1
++done
++TIME y "固件下载成功!"
++TIME "正在获取云端 MD5,请耐心等待..."
++wget -q --tries 3 --timeout 5 ${Github_Release}/${Firmware_Detail} -O ${Firmware_Detail}
++[[ ! $? == 0 ]] && {
++	TIME r "云端 MD5 获取失败,请检查网络后重试!"
++	exit 1
++}
++CLOUD_MD5=$(awk -F '[ :]' '/MD5/ {print $2;exit}' ${Firmware_Detail})
++CURRENT_MD5=$(md5sum ${Firmware} | cut -d ' ' -f1)
++[[ -z "${CLOUD_MD5}" ]] || [[ -z "${CURRENT_MD5}" ]] && {
++	TIME r "MD5 获取失败!"
++	exit 1
++}
++[[ "${CLOUD_MD5}" == "${CURRENT_MD5}" ]] && {
++	TIME y "MD5 对比通过!"
++} || {
++	echo -e "\n本地固件MD5: ${CURRENT_MD5}"
++	echo "云端固件MD5: ${CLOUD_MD5}"
++	TIME r "MD5 对比失败,请检查网络后重试!"
++	exit 1
++}
++if [[ "${Compressed_Firmware}" == 1 ]];then
++	TIME "检测到固件为 [.gz] 格式,开始解压固件..."
++	Install_Pkg gzip
++	gzip -dk ${Firmware} > /dev/null 2>&1
++	export Firmware="${Firmware_Name}${BOOT_Type}.img"
++	[[ $? == 0 ]] && {
++		TIME y "解压成功,固件名称: ${Firmware}"
++	} || {
++		TIME r "解压失败,请检查系统可用空间!"
++		exit 1
++	}
++fi
++sleep 3
++TIME "正在更新固件,期间请耐心等待..."
++sysupgrade ${Upgrade_Options} ${Firmware}
++[[ $? -ne 0 ]] && {
++	TIME r "固件刷写失败,请尝试手动更新固件!"
++	exit 1
++}
+diff --git a/package/base-files/files/bin/config_generate b/package/base-files/files/bin/config_generate
+index ee3958e..a8e5329 100755
+--- a/package/base-files/files/bin/config_generate
++++ b/package/base-files/files/bin/config_generate
+@@ -281,7 +281,8 @@ generate_static_system() {
+ 		delete system.@system[0]
+ 		add system system
+ 		set system.@system[-1].hostname='OpenWrt'
+-		set system.@system[-1].timezone='UTC'
++		set system.@system[-1].timezone='CST-8'
++		set system.@system[-1].zonename='Asia/Shanghai'
+ 		set system.@system[-1].ttylogin='0'
+ 		set system.@system[-1].log_size='64'
+ 		set system.@system[-1].urandom_seed='0'
+@@ -290,10 +291,10 @@ generate_static_system() {
+ 		set system.ntp='timeserver'
+ 		set system.ntp.enabled='1'
+ 		set system.ntp.enable_server='0'
+-		add_list system.ntp.server='0.openwrt.pool.ntp.org'
+-		add_list system.ntp.server='1.openwrt.pool.ntp.org'
+-		add_list system.ntp.server='2.openwrt.pool.ntp.org'
+-		add_list system.ntp.server='3.openwrt.pool.ntp.org'
++		add_list system.ntp.server='ntp1.aliyun.com'
++		add_list system.ntp.server='time1.cloud.tencent.com'
++		add_list system.ntp.server='time.ustc.edu.cn'
++		add_list system.ntp.server='cn.pool.ntp.org'
+ 	EOF
+ 
+ 	if json_is_a system object; then
+diff --git a/package/base-files/files/etc/passwd b/package/base-files/files/etc/passwd
+index 1d06a80..c3a083d 100644
+--- a/package/base-files/files/etc/passwd
++++ b/package/base-files/files/etc/passwd
+@@ -1,4 +1,4 @@
+-root:x:0:0:root:/root:/bin/ash
++root:x:0:0:root:/root:/bin/bash
+ daemon:*:1:1:daemon:/var:/bin/false
+ ftp:*:55:55:ftp:/home/ftp:/bin/false
+ network:*:101:101:network:/var:/bin/false
+diff --git a/package/base-files/files/etc/profile b/package/base-files/files/etc/profile
+index 0beff16..926439f 100644
+--- a/package/base-files/files/etc/profile
++++ b/package/base-files/files/etc/profile
+@@ -1,14 +1,50 @@
+-[ -e /tmp/.failsafe ] && export FAILSAFE=1
++Sysinfo() {
++	[ -f /etc/openwrt_info ] && source /etc/openwrt_info > /dev/null 2>&1
++	export Target=${DEFAULT_Device}
++	[ -n "${CURRENT_Version}" ] && export Version="${CURRENT_Version}" || Version=未知
++	[ -z "${Target}" ] && export Target=$(jsonfilter -e '@.model.id' < /etc/board.json | tr ',' '_')
++	export IP_Address=$(ifconfig -a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | tr -d "addr:" | awk 'NR==1')
++	export CoreMark=$([ -f /etc/bench.log ] && egrep -o "[0-9]+" /etc/bench.log | awk 'NR==1')
++	export Startup=$(awk '{a=$1/86400;b=($1%86400)/3600;c=($1%3600)/60} {printf("%d 天 %d 小时 %d 分钟\n",a,b,c)}' /proc/uptime)
++	export Overlay_Available="$(df -h | grep ":/overlay" | awk '{print $4}' | awk 'NR==1')"
++	export TEMP=$(sensors 2>/dev/null | grep 'Core 0' | awk '{print $3}')
++	echo -e "\n           设备名称:		${Yellow}$(uname -n) / ${Target}${White}"
++	[ -n "${TEMP}" ] && echo "           核心温度:		${TEMP}"
++	echo "           内核版本:		$(uname -rs)"
++	echo -e "           固件版本:		${Skyb}${Version}${White}"
++	echo "           IP 地址 : 		${IP_Address}"
++	echo "           可用空间:		${Overlay_Available}"
++	[ -n "${CoreMark}" ] && echo "           性能得分:		${CoreMark}"
++	echo "           运行时间: 		${Startup}"
++	echo ""
++}
+ 
+-[ -f /etc/banner ] && cat /etc/banner
+-[ -n "$FAILSAFE" ] && cat /etc/banner.failsafe
++White="\e[0m"
++Yellow="\e[33m"
++Red="\e[31m"
++Blue="\e[34m"
++Skyb="\e[36m"
+ 
++clear
++[ -e /tmp/.failsafe ] && export FAILSAFE=1
++[ -f /etc/banner ] && {
++	echo -e "$Skyb"
++	cat /etc/banner
++	echo -e "$White"
++}
++[ -n "$FAILSAFE" ] && {
++	echo -e "$Red"
++	cat /etc/banner.failsafe
++	echo -e "$White"
++}
+ fgrep -sq '/ overlay ro,' /proc/mounts && {
+-	echo 'Your JFFS2-partition seems full and overlayfs is mounted read-only.'
+-	echo 'Please try to remove files from /overlay/upper/... and reboot!'
++	echo -e "$Red"
++	echo "警告: 您的固件空间已满,接下来保存的数据将会面临丢失的风险."
++	echo "请尝试从 /overlay 删除一些文件并重启设备!"
++	echo -e "$White"
+ }
+ 
+-export PATH="%PATH%"
++export PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+ export HOME=$(grep -e "^${USER:-root}:" /etc/passwd | cut -d ":" -f 6)
+ export HOME=${HOME:-/root}
+ export PS1='\u@\h:\w\$ '
+@@ -21,20 +57,27 @@ case "$TERM" in
+ esac
+ 
+ [ -n "$FAILSAFE" ] || {
+-	for FILE in /etc/profile.d/*.sh; do
++	for FILE in /etc/profile.d/*.sh
++	do
+ 		[ -e "$FILE" ] && . "$FILE"
+ 	done
+ 	unset FILE
+ }
+ 
+-if ( grep -qs '^root::' /etc/shadow && \
+-     [ -z "$FAILSAFE" ] )
+-then
+-cat << EOF
+-=== WARNING! =====================================
+-There is no root password defined on this device!
+-Use the "passwd" command to set up a new password
+-in order to prevent unauthorized SSH logins.
+---------------------------------------------------
+-EOF
+-fi
++service() {
++	[ -f "/etc/init.d/$1" ] || {
++		echo -e "${Red}service "'"'"$1"'"'" not found, the following services are available:${White}\n"
++		ls "/etc/init.d"
++		return 1
++	}
++	/etc/init.d/$@
++}
++
++Sysinfo
++alias reload='clear && /etc/profile'
++alias autoupdate='bash /bin/AutoUpdate.sh'
++alias tools='bash /bin/AutoBuild_Tools.sh'
++alias run_coremark='bash /etc/coremark.sh'
++alias shutdown='sync && poweroff'
++alias ll='ls -alF --color=auto'
++alias cls='clear'
+\ No newline at end of file
+diff --git a/package/base-files/files/etc/shadow b/package/base-files/files/etc/shadow
+index 4b4154f..5dc98d4 100644
+--- a/package/base-files/files/etc/shadow
++++ b/package/base-files/files/etc/shadow
+@@ -1,4 +1,4 @@
+-root::0:0:99999:7:::
++root:$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF.:0:0:99999:7:::
+ daemon:*:0:0:99999:7:::
+ ftp:*:0:0:99999:7:::
+ network:*:0:0:99999:7:::
+diff --git a/package/base-files/image-config.in b/package/base-files/image-config.in
+index 1f06332..c445c07 100644
+--- a/package/base-files/image-config.in
++++ b/package/base-files/image-config.in
+@@ -183,7 +183,7 @@ if VERSIONOPT
+ 	config VERSION_REPO
+ 		string
+ 		prompt "Release repository"
+-		default "https://downloads.openwrt.org/releases/21.02-SNAPSHOT"
++		default "https://mirrors.cloud.tencent.com/openwrt/releases/21.02-SNAPSHOT"
+ 		help
+ 			This is the repository address embedded in the image, it defaults
+ 			to the trunk snapshot repo; the url may contain the following placeholders:
+diff --git a/package/kernel/linux/files/sysctl-nf-conntrack.conf b/package/kernel/linux/files/sysctl-nf-conntrack.conf
+index 37baf5f..558154d 100644
+--- a/package/kernel/linux/files/sysctl-nf-conntrack.conf
++++ b/package/kernel/linux/files/sysctl-nf-conntrack.conf
+@@ -3,7 +3,7 @@
+ 
+ net.netfilter.nf_conntrack_acct=1
+ net.netfilter.nf_conntrack_checksum=0
+-net.netfilter.nf_conntrack_max=16384
++net.netfilter.nf_conntrack_max=65536
+ net.netfilter.nf_conntrack_tcp_timeout_established=7440
+ net.netfilter.nf_conntrack_udp_timeout=60
+ net.netfilter.nf_conntrack_udp_timeout_stream=180
+diff --git a/package/network/config/firewall/files/firewall.config b/package/network/config/firewall/files/firewall.config
+index 5e22f98..ddea97c 100644
+--- a/package/network/config/firewall/files/firewall.config
++++ b/package/network/config/firewall/files/firewall.config
+@@ -142,6 +142,71 @@ config rule
+ 	option target		REJECT
+ 	option enabled		false
+ 
++config rule
++	option name		http80
++	option proto		tcp
++	option dest_port	80
++	option target		ACCEPT
++	option src		wan
++
++config rule
++	option name		ssh8022
++	option proto		tcp
++	option dest_port	8022
++	option target		ACCEPT
++	option src		wan
++
++config redirect
++	option target		DNAT
++	option name		ssh
++	option src		wan
++	option src_dport	8022
++	option dest		lan
++	option dest_ip		192.168.8.1
++	option dest_port	22
++
++config rule
++	option name		ftp21
++	option proto		tcp
++	option dest_port	21
++	option target		ACCEPT
++	option src		wan
++	
++config rule
++	option name 'ftp-wan'
++	list proto 'tcp'
++	option src 'wan'
++	option dest_port '10090-10100'
++	option target 'ACCEPT'
++
++config rule
++	option name 'ttyd-wan'
++	list proto 'tcp'
++	option src 'wan'
++	option dest_port '7681'
++	option target 'ACCEPT'
++
++config rule                                                                                 
++	option target 'ACCEPT'                                                              
++	option src 'wan'                                                                    
++	option proto 'udp'                                                               
++	option dest_port '137-138'                                                          
++	option name 'Allow-samba-netbios'
++ 
++config rule                                                                                 
++	option target 'ACCEPT'                                                              
++	option src 'wan'                                                                    
++	option proto 'tcp'                                                               
++	option dest_port '139'                                                             
++	option name 'Allow-samba-netbios-session'
++ 
++config rule                                                                                 
++	option target 'ACCEPT'                                                              
++	option src 'wan'                                                                    
++	option proto 'tcp'                                                                  
++	option dest_port '445'                                                              
++	option name 'Allow-samba-microsoft-directory-service'
++
+ # include a file with users custom iptables rules
+ config include
+ 	option path /etc/firewall.user
+-- 
+2.20.1
+

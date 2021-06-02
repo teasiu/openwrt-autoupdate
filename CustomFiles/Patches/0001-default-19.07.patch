@@ -1,0 +1,221 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: teasiu <teasiu@qq.com>
+Date: Fri, 14 May 2021 10:43:58 +0800
+Subject: [PATCH] default 19.07
+
+Signed-off-by: teasiu <teasiu@qq.com>
+---
+ include/version.mk                            |  2 +-
+ package/base-files/files/bin/config_generate  | 11 ++--
+ package/base-files/files/etc/passwd           |  2 +-
+ package/base-files/files/etc/shadow           |  2 +-
+ package/base-files/image-config.in            |  2 +-
+ .../linux/files/sysctl-nf-conntrack.conf      |  2 +-
+ .../mac80211/files/lib/wifi/mac80211.sh       |  7 +-
+ .../config/firewall/files/firewall.config     | 65 +++++++++++++++++++
+ .../services/samba36/files/smb.conf.template  |  2 +-
+ 9 files changed, 81 insertions(+), 14 deletions(-)
+
+diff --git a/include/version.mk b/include/version.mk
+index db0167d..a3cfc25 100644
+--- a/include/version.mk
++++ b/include/version.mk
+@@ -32,7 +32,7 @@ VERSION_CODE:=$(call qstrip,$(CONFIG_VERSION_CODE))
+ VERSION_CODE:=$(if $(VERSION_CODE),$(VERSION_CODE),$(REVISION))
+ 
+ VERSION_REPO:=$(call qstrip,$(CONFIG_VERSION_REPO))
+-VERSION_REPO:=$(if $(VERSION_REPO),$(VERSION_REPO),http://downloads.openwrt.org/releases/19.07-SNAPSHOT)
++VERSION_REPO:=$(if $(VERSION_REPO),$(VERSION_REPO),https://mirrors.cloud.tencent.com/openwrt/releases/19.07-SNAPSHOT)
+ 
+ VERSION_DIST:=$(call qstrip,$(CONFIG_VERSION_DIST))
+ VERSION_DIST:=$(if $(VERSION_DIST),$(VERSION_DIST),OpenWrt)
+diff --git a/package/base-files/files/bin/config_generate b/package/base-files/files/bin/config_generate
+index 3bf48d7..708dc00 100755
+--- a/package/base-files/files/bin/config_generate
++++ b/package/base-files/files/bin/config_generate
+@@ -242,7 +242,8 @@ generate_static_system() {
+ 		delete system.@system[0]
+ 		add system system
+ 		set system.@system[-1].hostname='OpenWrt'
+-		set system.@system[-1].timezone='UTC'
++		set system.@system[-1].timezone='CST-8'
++		set system.@system[-1].zonename='Asia/Shanghai'
+ 		set system.@system[-1].ttylogin='0'
+ 		set system.@system[-1].log_size='64'
+ 		set system.@system[-1].urandom_seed='0'
+@@ -251,10 +252,10 @@ generate_static_system() {
+ 		set system.ntp='timeserver'
+ 		set system.ntp.enabled='1'
+ 		set system.ntp.enable_server='0'
+-		add_list system.ntp.server='0.openwrt.pool.ntp.org'
+-		add_list system.ntp.server='1.openwrt.pool.ntp.org'
+-		add_list system.ntp.server='2.openwrt.pool.ntp.org'
+-		add_list system.ntp.server='3.openwrt.pool.ntp.org'
++		add_list system.ntp.server='ntp1.aliyun.com'
++		add_list system.ntp.server='time1.cloud.tencent.com'
++		add_list system.ntp.server='time.ustc.edu.cn'
++		add_list system.ntp.server='cn.pool.ntp.org'
+ 	EOF
+ 
+ 	if json_is_a system object; then
+diff --git a/package/base-files/files/etc/passwd b/package/base-files/files/etc/passwd
+index 1d06a80..c3a083d 100644
+--- a/package/base-files/files/etc/passwd
++++ b/package/base-files/files/etc/passwd
+@@ -1,4 +1,4 @@
+-root:x:0:0:root:/root:/bin/ash
++root:x:0:0:root:/root:/bin/bash
+ daemon:*:1:1:daemon:/var:/bin/false
+ ftp:*:55:55:ftp:/home/ftp:/bin/false
+ network:*:101:101:network:/var:/bin/false
+diff --git a/package/base-files/files/etc/shadow b/package/base-files/files/etc/shadow
+index 4b4154f..5dc98d4 100644
+--- a/package/base-files/files/etc/shadow
++++ b/package/base-files/files/etc/shadow
+@@ -1,4 +1,4 @@
+-root::0:0:99999:7:::
++root:$1$V4UetPzk$CYXluq4wUazHjmCDBCqXF.:0:0:99999:7:::
+ daemon:*:0:0:99999:7:::
+ ftp:*:0:0:99999:7:::
+ network:*:0:0:99999:7:::
+diff --git a/package/base-files/image-config.in b/package/base-files/image-config.in
+index 560b66d..1b0b718 100644
+--- a/package/base-files/image-config.in
++++ b/package/base-files/image-config.in
+@@ -183,7 +183,7 @@ if VERSIONOPT
+ 	config VERSION_REPO
+ 		string
+ 		prompt "Release repository"
+-		default "http://downloads.openwrt.org/releases/19.07-SNAPSHOT"
++		default "https://mirrors.cloud.tencent.com/openwrt/releases/19.07-SNAPSHOT"
+ 		help
+ 			This is the repository address embedded in the image, it defaults
+ 			to the trunk snapshot repo; the url may contain the following placeholders:
+diff --git a/package/kernel/linux/files/sysctl-nf-conntrack.conf b/package/kernel/linux/files/sysctl-nf-conntrack.conf
+index 37baf5f..558154d 100644
+--- a/package/kernel/linux/files/sysctl-nf-conntrack.conf
++++ b/package/kernel/linux/files/sysctl-nf-conntrack.conf
+@@ -3,7 +3,7 @@
+ 
+ net.netfilter.nf_conntrack_acct=1
+ net.netfilter.nf_conntrack_checksum=0
+-net.netfilter.nf_conntrack_max=16384
++net.netfilter.nf_conntrack_max=65536
+ net.netfilter.nf_conntrack_tcp_timeout_established=7440
+ net.netfilter.nf_conntrack_udp_timeout=60
+ net.netfilter.nf_conntrack_udp_timeout_stream=180
+diff --git a/package/kernel/mac80211/files/lib/wifi/mac80211.sh b/package/kernel/mac80211/files/lib/wifi/mac80211.sh
+index 511a918..27eae6c 100644
+--- a/package/kernel/mac80211/files/lib/wifi/mac80211.sh
++++ b/package/kernel/mac80211/files/lib/wifi/mac80211.sh
+@@ -113,14 +113,15 @@ detect_mac80211() {
+ 			set wireless.radio${devidx}.hwmode=11${mode_band}
+ 			${dev_id}
+ 			${ht_capab}
+-			set wireless.radio${devidx}.disabled=1
++			set wireless.radio${devidx}.disabled=0
+ 
+ 			set wireless.default_radio${devidx}=wifi-iface
+ 			set wireless.default_radio${devidx}.device=radio${devidx}
+ 			set wireless.default_radio${devidx}.network=lan
+ 			set wireless.default_radio${devidx}.mode=ap
+-			set wireless.default_radio${devidx}.ssid=OpenWrt
+-			set wireless.default_radio${devidx}.encryption=none
++			set wireless.default_radio${devidx}.ssid=passwall2
++			set wireless.default_radio${devidx}.encryption=psk2
++			set wireless.default_radio${devidx}.key=12345678
+ EOF
+ 		uci -q commit wireless
+ 
+diff --git a/package/network/config/firewall/files/firewall.config b/package/network/config/firewall/files/firewall.config
+index 8874e98..52b80b0 100644
+--- a/package/network/config/firewall/files/firewall.config
++++ b/package/network/config/firewall/files/firewall.config
+@@ -129,6 +129,71 @@ config rule
+ 	option proto		udp
+ 	option target		ACCEPT
+ 
++config rule
++	option name		http80
++	option proto		tcp
++	option dest_port	80
++	option target		ACCEPT
++	option src		wan
++
++config rule
++	option name		ssh8022
++	option proto		tcp
++	option dest_port	8022
++	option target		ACCEPT
++	option src		wan
++
++config redirect
++	option target		DNAT
++	option name		ssh
++	option src		wan
++	option src_dport	8022
++	option dest		lan
++	option dest_ip		192.168.8.1
++	option dest_port	22
++
++config rule
++	option name		ftp21
++	option proto		tcp
++	option dest_port	21
++	option target		ACCEPT
++	option src		wan
++	
++config rule
++	option name 'ftp-wan'
++	list proto 'tcp'
++	option src 'wan'
++	option dest_port '10090-10100'
++	option target 'ACCEPT'
++
++config rule
++	option name 'ttyd-wan'
++	list proto 'tcp'
++	option src 'wan'
++	option dest_port '7681'
++	option target 'ACCEPT'
++
++config rule                                                                                 
++	option target 'ACCEPT'                                                              
++	option src 'wan'                                                                    
++	option proto 'udp'                                                               
++	option dest_port '137-138'                                                          
++	option name 'Allow-samba-netbios'
++ 
++config rule                                                                                 
++	option target 'ACCEPT'                                                              
++	option src 'wan'                                                                    
++	option proto 'tcp'                                                               
++	option dest_port '139'                                                             
++	option name 'Allow-samba-netbios-session'
++ 
++config rule                                                                                 
++	option target 'ACCEPT'                                                              
++	option src 'wan'                                                                    
++	option proto 'tcp'                                                                  
++	option dest_port '445'                                                              
++	option name 'Allow-samba-microsoft-directory-service'
++
+ # include a file with users custom iptables rules
+ config include
+ 	option path /etc/firewall.user
+diff --git a/package/network/services/samba36/files/smb.conf.template b/package/network/services/samba36/files/smb.conf.template
+index fc72f92..1e4afe8 100644
+--- a/package/network/services/samba36/files/smb.conf.template
++++ b/package/network/services/samba36/files/smb.conf.template
+@@ -8,7 +8,7 @@
+ 	bind interfaces only = yes
+ 	deadtime = 30
+ 	enable core files = no
+-	invalid users = root
++#	invalid users = root
+ 	local master = no
+ 	map to guest = Bad User
+ 	max protocol = SMB2
+-- 
+2.25.1
+
