@@ -221,7 +221,7 @@ Other_Scripts() {
 				Replace_File CustomFiles/Patches/0001-default-${Current_Branch}.patch ./
 				cat 0003-upx-ucl-${Current_Branch}.patch | patch -p1 > /dev/null 2>&1
 				cat 0001-default-${Current_Branch}.patch | patch -p1 > /dev/null 2>&1
-				# AddPackage svn feeds/packages/lang golang coolsnowwolf/packages/trunk/lang
+				AddPackage svn feeds/packages/lang golang coolsnowwolf/packages/trunk/lang
 				TIME "Start to convert zh-cn translation files to zh_Hans ..."
 				Replace_File Scripts/Convert_Translation.sh package
 				cd ./package && bash ./Convert_Translation.sh && cd ..
