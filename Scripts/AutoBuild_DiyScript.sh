@@ -31,7 +31,7 @@ Firmware-Diy() {
 	*)
 		case ${Current_Branch} in
 		19.07)
-			AddPackage git kernel rtl8192eu-openwrt https://github.com/teasiu main
+			AddPackage git kernel rtl8192eu-openwrt teasiu main
 		;;
 		esac
 	;;
