@@ -116,6 +116,8 @@ jobs:
         make download -j$(nproc)
         [ $? == 0 ] && Compile_Result=true
         echo "Compile_Result=$Compile_Result" >> $GITHUB_ENV
+        ls $GITHUB_WORKSPACE/openwrt
+        pwd
 
     - name: Upload ftp
       uses: sebastianpopp/ftp-action@releases/v2
@@ -123,6 +125,6 @@ jobs:
         host: ${{ secrets.FTP_SERVER }}
         user: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        localDir: "/workdir/openwrt/dl"
+        localDir: "$GITHUB_WORKSPACE/openwrt/dl"
         remoteDir: "/home/ubuntu/openwrtdl"
         options: "--delete --asci"
