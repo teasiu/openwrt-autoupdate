@@ -125,6 +125,6 @@ jobs:
         host: ${{ secrets.FTP_SERVER }}
         user: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        localDir: "$GITHUB_WORKSPACE/openwrt/dl"
+        localDir: "/home/runner/work/openwrt-autoupdate/openwrt-autoupdate/openwrt/dl"
         remoteDir: "/home/ubuntu/openwrtdl"
         options: "--delete --asci"
