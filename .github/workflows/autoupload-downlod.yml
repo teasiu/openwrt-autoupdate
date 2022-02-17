@@ -101,17 +101,6 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a > /dev/null 2>&1
 
-    - name: Run AutoBuild_DiyScript.sh
-      run: |
-        chmod +x Scripts/AutoBuild_*.sh
-        cp $GITHUB_WORKSPACE/Configs/$DEFAULT_TARGET openwrt/.config
-        cd openwrt
-        make defconfig > /dev/null 2>&1
-        source $GITHUB_WORKSPACE/Scripts/AutoBuild_DiyScript.sh
-        source $GITHUB_WORKSPACE/Scripts/AutoBuild_Function.sh
-        Firmware-Diy_Base && Firmware-Diy
-        rm -f .config && cp $GITHUB_WORKSPACE/Configs/$DEFAULT_TARGET .config
-
     - name: SSH Connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
       if: (github.event.inputs.SSH == 'true' && github.event.inputs.SSH  != 'false') || contains(github.event.action, 'SSH')
@@ -123,8 +112,6 @@ jobs:
       run: |
         export Compile_Result=false
         cd openwrt
-        source $GITHUB_WORKSPACE/Scripts/AutoBuild_Function.sh && Other_Scripts
-        rm -rf ./tmp && ./scripts/feeds install -a > /dev/null 2>&1
         make defconfig
         make download -j$(nproc)
         [ $? == 0 ] && Compile_Result=true
