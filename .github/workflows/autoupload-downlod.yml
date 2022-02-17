@@ -117,12 +117,6 @@ jobs:
         [ $? == 0 ] && Compile_Result=true
         echo "Compile_Result=$Compile_Result" >> $GITHUB_ENV
 
-    - name: Process Firmware
-      if: env.Compile_Result == 'true' && !cancelled()
-      run: |
-        cd openwrt
-        source $GITHUB_WORKSPACE/Scripts/AutoBuild_Function.sh && PS_Firmware
-
     - name: Upload ftp
       uses: sebastianpopp/ftp-action@releases/v2
       with:
