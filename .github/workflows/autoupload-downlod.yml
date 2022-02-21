@@ -125,6 +125,6 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: "$GITHUB_WORKSPACE/openwrt/dl/"
+        local-dir: "./openwrt/dl/"
         server-dir: "openwrtdl/"
 
