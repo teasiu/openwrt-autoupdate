@@ -122,9 +122,8 @@ jobs:
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@4.3.0
       with:
-        server: 150.230.249.194
-        username: openwrt
-        protocol: ftps
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: "/home/runner/work/openwrt-autoupdate/openwrt-autoupdate/openwrt/dl/"
         server-dir: "opdl/"
