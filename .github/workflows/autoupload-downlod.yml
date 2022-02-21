@@ -127,5 +127,5 @@ jobs:
         protocol: ftps
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: "/home/runner/work/openwrt-autoupdate/openwrt-autoupdate/openwrt/dl/"
-        server-dir: "./openwrtdl/"
+        server-dir: "opdl/"
 
