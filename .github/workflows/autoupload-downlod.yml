@@ -119,12 +119,12 @@ jobs:
         ls $GITHUB_WORKSPACE/openwrt
         pwd
 
-    - name: Upload ftp
-      uses: sebastianpopp/ftp-action@releases/v2
+    - name: 📂 Sync files
+      uses: SamKirkland/FTP-Deploy-Action@4.3.0
       with:
-        host: ${{ secrets.FTP_SERVER }}
-        user: ${{ secrets.FTP_USERNAME }}
+        server: openwrt.ecoo.top
+        username: openwrt
         password: ${{ secrets.FTP_PASSWORD }}
-        localDir: "/home/runner/work/openwrt-autoupdate/openwrt-autoupdate/openwrt/dl"
-        remoteDir: "/home/openwrt/openwrtdl"
-        options: "--delete --asci"
+        local-dir: "/home/runner/work/openwrt-autoupdate/openwrt-autoupdate/openwrt/dl"
+        server-dir: "openwrtdl"
+
