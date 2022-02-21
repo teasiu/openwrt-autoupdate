@@ -124,6 +124,7 @@ jobs:
       with:
         server: openwrt.ecoo.top
         username: openwrt
+        protocol: ftps
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: "/home/runner/work/openwrt-autoupdate/openwrt-autoupdate/openwrt/dl/"
         server-dir: "openwrtdl/"
