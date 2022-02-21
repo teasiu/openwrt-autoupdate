@@ -125,6 +125,6 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: "/home/runner/work/openwrt-autoupdate/openwrt-autoupdate/openwrt/dl/"
-        server-dir: "opdl/"
+        local-dir: "$GITHUB_WORKSPACE/openwrt/dl/"
+        server-dir: "openwrtdl/"
 
