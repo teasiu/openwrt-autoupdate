@@ -126,5 +126,5 @@ jobs:
         user: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         localDir: "/home/runner/work/openwrt-autoupdate/openwrt-autoupdate/openwrt/dl"
-        remoteDir: "/home/ubuntu/openwrtdl"
+        remoteDir: "/home/openwrt/openwrtdl"
         options: "--delete --asci"
