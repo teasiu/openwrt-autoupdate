@@ -45,7 +45,7 @@ jobs:
 
     - name: Clone Openwrt Source Code
       run: |
-        git clone -b $REPO_BRANCH $REPO_URL openwrt
+        git clone https://github.com/coolsnowwolf/lede.git openwrt
         cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a > /dev/null 2>&1
