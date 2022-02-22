@@ -50,8 +50,9 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a > /dev/null 2>&1
 
-    - name: Compile
+    - name: Compile x86
       run: |
+        cp ./Configs/x86_64 openwrt/.config
         cd openwrt
         make defconfig
         make download -j$(nproc)

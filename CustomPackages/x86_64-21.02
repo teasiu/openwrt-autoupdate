@@ -1,8 +1,0 @@
-git other openwrt-passwall xiaorouji main
-git other luci-app-shutdown Hyy2001X
-svn other luci-app-nfs openwrt-packages/trunk
-svn other luci-app-ramfree garypang13/openwrt-packages/trunk
-svn other luci-app-vlmcsd garypang13/openwrt-packages/trunk
-svn other vlmcsd garypang13/openwrt-packages/trunk
-svn other parted garypang13/openwrt-packages/trunk
-svn other luci-app-diskman garypang13/openwrt-packages/trunk
