@@ -15,5 +15,8 @@ make menuconfig
 (https://openwrt.ecoo.top/files/openwrtdl)    Local mirror for source packages
 
 ```
+```
+或者在.config的配置里添加如下
 
-
+CONFIG_LOCALMIRROR="https://openwrt.ecoo.top/files/openwrtdl"
+```

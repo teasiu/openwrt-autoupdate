@@ -53,9 +53,6 @@ jobs:
         cd openwrt
         make defconfig
         make download -j$(nproc)
-        [ $? == 0 ] && Compile_Result=true
-        ls $GITHUB_WORKSPACE/openwrt
-        pwd
 
     - name: Compile mips
       run: |
@@ -63,10 +60,14 @@ jobs:
         cd openwrt
         make defconfig
         make download -j$(nproc)
-        [ $? == 0 ] && Compile_Result=true
-        ls $GITHUB_WORKSPACE/openwrt
-        pwd
-        
+
+    - name: Compile all.config
+      run: |
+        cp ./Configs/all.config openwrt/.config
+        cd openwrt
+        make defconfig
+        make download -j$(nproc)
+                
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@4.3.0
       with:
