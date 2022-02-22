@@ -23,10 +23,6 @@ on:
   #  types: [started]
 
 ### 环境变量设置
-env:
-# 源码仓库:分支
-  DEFAULT_SOURCE: coolsnowwolf/lede:master
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,10 +39,11 @@ jobs:
         sudo -E apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 python2.7 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler g++-multilib antlr3 gperf wget curl swig rsync qemu-utils
         sudo timedatectl set-timezone "Asia/Shanghai"
 
-    - name: Clone Openwrt Source Code
+    - name: Clone Openwrt-lede Source Code
       run: |
         git clone https://github.com/coolsnowwolf/lede.git openwrt
         cd openwrt
+        ln -s ../dl dl
         ./scripts/feeds update -a
         ./scripts/feeds install -a > /dev/null 2>&1
 
@@ -76,6 +73,6 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: "./openwrt/dl/"
+        local-dir: "./dl/"
         server-dir: "openwrtdl/"
 
