@@ -1,12 +1,19 @@
-# Actions for Building OpenWrt / AutoUpdate
+# Openwrtdl软件自动上传到服务器的actions
 
-## openwrt-19.07 luci-nginx + passwall
+## 软件下载地址
+ https://openwrt.ecoo.top/files/openwrtdl
 
-## openwrt-21.02 luci-nginx + passwall
+## 编译是设置方法
 
 ```
-IP : 192.168.8.1
-PASSWD: password
+通过menuconfig设置localmirror
+
+make menuconfig
+
+=> [*] Advanced configuration options (for developers)  --->
+
+(https://openwrt.ecoo.top/files/openwrtdl)    Local mirror for source packages
+
 ```
 
 
