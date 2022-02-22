@@ -60,6 +60,16 @@ jobs:
         ls $GITHUB_WORKSPACE/openwrt
         pwd
 
+    - name: Compile mips
+      run: |
+        cp ./Configs/d-team_newifi-d2 openwrt/.config
+        cd openwrt
+        make defconfig
+        make download -j$(nproc)
+        [ $? == 0 ] && Compile_Result=true
+        ls $GITHUB_WORKSPACE/openwrt
+        pwd
+        
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@4.3.0
       with:
