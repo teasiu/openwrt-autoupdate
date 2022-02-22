@@ -1,9 +1,9 @@
-# Openwrtdl软件自动上传到服务器的actions
+# Openwrtdl软件sources自动每周更新
 
-## 软件下载地址
+## 软件sources下载地址
  https://openwrt.ecoo.top/files/openwrtdl
 
-## 编译是设置方法
+## 编译时添加设置方法
 
 ```
 通过menuconfig设置localmirror
