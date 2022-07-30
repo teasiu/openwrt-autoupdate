@@ -67,6 +67,22 @@ jobs:
         cd openwrt
         make defconfig
         make download -j$(nproc)
+
+    - name: Clone Openwrt-190710 Source Code
+      run: |
+        git clone https://github.com/openwrt/openwrt.git openwrt19
+        cd openwrt19
+        ln -s ../dl dl
+        git checkout -b v19.07.10
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a > /dev/null 2>&1
+
+    - name: Compile arm
+      run: |
+        cp ./Configs/arm-hiop openwrt19/.config
+        cd openwrt19
+        make defconfig
+        make download -j$(nproc)
                 
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@4.3.0
