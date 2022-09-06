@@ -1,0 +1,41 @@
+###########################################################
+#   Description: Compile work by GitHub Actions      #
+#   Based on:    										  #
+#   Author: Teasiu                                        #
+###########################################################
+
+name: autowork
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+
+  schedule:
+    - cron: 0 8 * * 5
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    
+    - name: Initialization Environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt-get update
+        sudo -E apt-get -y install build-essential
+        sudo timedatectl set-timezone "Asia/Shanghai"
+
+    - name: Clone Source Code
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        git clone ssh://git@ecoo.ddns.net:8022/home/git/repo/work.git work
+        cd work
+        ls -al
+
+
