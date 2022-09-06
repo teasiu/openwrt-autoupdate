@@ -36,7 +36,7 @@ jobs:
     
     - name: clone repo
       run: |
-        git clone ssh://git@ecoo.ddns.net:8022/home/git/repo/work.git work
+        git clone ssh://root@ecoo.ddns.net:8022/mnt/sda1/gitweb/work.git work
         cd work
         ls -al
 
