@@ -22,4 +22,4 @@ CONFIG_LOCALMIRROR="https://openwrt.ecoo.top/files/openwrtdl"
 ```
 
 ## 本项目交流网站
- https://bbs.histb.top/
+ https://bbs.histb.com/

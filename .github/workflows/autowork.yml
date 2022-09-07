@@ -34,6 +34,12 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
     
+    - name: Start SSH via tmate
+      uses: P3TERX/ssh2actions@main
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        
     - name: clone repo
       run: |
         git clone ssh://root@ecoo.ddns.net:8022/mnt/sda1/gitweb/work.git work
