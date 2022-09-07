@@ -41,6 +41,7 @@ jobs:
         git clone git@github.com:ecoo168/mv300.git mv300
         cd mv300
         ls -al
-        ./mk300.sh -f
+        pwd
+        bash mk300-64.sh -f
 
 
