@@ -1,0 +1,43 @@
+###########################################################
+#   Description: Compile work by GitHub Actions      #
+#   Based on:    										  #
+#   Author: Teasiu                                        #
+###########################################################
+
+name: auto300
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+
+#  schedule:
+#    - cron: 0 8 * * 5
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    
+    - name: Initialization Environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt-get update
+        sudo -E apt-get -y install build-essential
+        sudo timedatectl set-timezone "Asia/Shanghai"
+
+    - name: setup key
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_TWO }}
+    
+    - name: clone repo
+      run: |
+        git clone git@github.com:ecoo168/mv300.git mv300
+        cd mv300
+        ls -al
+
+
