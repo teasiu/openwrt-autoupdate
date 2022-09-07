@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
     - name: Checkout
@@ -26,8 +26,10 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo -E apt-get update
-        sudo -E apt-get -y install build-essential
+        sudo -E apt-get -y install build-essential zlib1g-dev bison flex libncurses-dev
         sudo timedatectl set-timezone "Asia/Shanghai"
+        sudo rm -rf /bin/sh
+        sudo ln -s /bin/bash /bin/sh
 
     - name: setup key
       uses: webfactory/ssh-agent@v0.5.4
@@ -39,5 +41,6 @@ jobs:
         git clone git@github.com:ecoo168/mv300.git mv300
         cd mv300
         ls -al
+        ./mk300.sh -f
 
 
