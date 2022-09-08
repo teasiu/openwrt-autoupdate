@@ -36,12 +36,20 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY_TWO }}
     
-    - name: clone repo
+    - name: clone repo and make
       run: |
-        git clone git@github.com:ecoo168/mv300.git mv300
+        git clone ${{ secrets.MV300 }} mv300
         cd mv300
         ls -al
         pwd
         bash mv300-64.sh -f
 
+    - name: 📂 Sync files
+      uses: SamKirkland/FTP-Deploy-Action@4.3.0
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: "./mv300/out/hi3798mv300"
+        server-dir: "mv300/"
 
