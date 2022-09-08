@@ -28,6 +28,8 @@ jobs:
         sudo -E apt-get update
         sudo -E apt-get -y install build-essential zlib1g-dev bison flex libncurses-dev
         sudo timedatectl set-timezone "Asia/Shanghai"
+        sudo rm -rf /bin/sh
+        sudo ln -s /bin/bash /bin/sh
 
     - name: setup key
       uses: webfactory/ssh-agent@v0.5.4
@@ -42,8 +44,16 @@ jobs:
         
     - name: clone repo
       run: |
-        git clone ssh://root@ecoo.ddns.net:8022/mnt/sda1/gitweb/work.git work
+        git clone ${{ secrets.WORK }} work
         cd work
         ls -al
+        bash mv100.sh -g
 
-
+    - name: Sync files
+      uses: SamKirkland/FTP-Deploy-Action@4.3.0
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: "./work/out/hi3798mv100/"
+        server-dir: "mv100/"
