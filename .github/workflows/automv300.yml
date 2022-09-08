@@ -50,6 +50,6 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: "./mv300/out/hi3798mv300"
+        local-dir: "./mv300/out/hi3798mv300/"
         server-dir: "mv300/"
 
