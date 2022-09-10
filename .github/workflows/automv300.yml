@@ -28,8 +28,7 @@ jobs:
         sudo -E apt-get update
         sudo -E apt-get -y install build-essential zlib1g-dev bison flex libncurses-dev
         sudo timedatectl set-timezone "Asia/Shanghai"
-        sudo rm -rf /bin/sh
-        sudo ln -s /bin/bash /bin/sh
+        sudo ln -sf /bin/bash /bin/sh
 
     - name: setup key
       uses: webfactory/ssh-agent@v0.5.4
