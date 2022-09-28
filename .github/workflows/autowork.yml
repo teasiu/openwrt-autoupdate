@@ -46,7 +46,7 @@ jobs:
         git clone ${{ secrets.WORK }} work
         cd work
         ls -al
-        bash mv100.sh -g
+        bash build.sh -mv100 -mv200
 
     - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@4.3.0
@@ -56,3 +56,12 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: "./work/out/hi3798mv100/"
         server-dir: "mv100/"
+
+    - name: Sync files 200
+      uses: SamKirkland/FTP-Deploy-Action@4.3.0
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: "./work/out/hi3798mv200/"
+        server-dir: "mv200/"
